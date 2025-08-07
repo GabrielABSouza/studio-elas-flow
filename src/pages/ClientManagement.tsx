@@ -131,7 +131,7 @@ export default function ClientManagement() {
 
       <div className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
+          <TabsList className="grid w-full grid-cols-2 lg:w-[300px]">
             <TabsTrigger value="dashboard" className="gap-2">
               <BarChart3 className="h-4 w-4" />
               Dashboard
@@ -140,12 +140,6 @@ export default function ClientManagement() {
               <Users className="h-4 w-4" />
               Clientes
             </TabsTrigger>
-            {isFormOpen && (
-              <TabsTrigger value="form" className="gap-2">
-                <Plus className="h-4 w-4" />
-                {editingClient ? "Editar" : "Novo"}
-              </TabsTrigger>
-            )}
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
