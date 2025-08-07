@@ -1,6 +1,7 @@
-import { Users, UserPlus, Calendar, TrendingUp } from "lucide-react";
+import { Users, UserPlus, Calendar, TrendingUp, AlertTriangle, Clock, DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Client } from "@/types/client";
 
 interface ClientDashboardProps {
@@ -36,6 +37,69 @@ export function ClientDashboard({ clients }: ClientDashboardProps) {
   const sortedPreferences = Object.entries(topPreferences)
     .sort(([, a], [, b]) => b - a)
     .slice(0, 5);
+
+  // Alert calculations
+  const getClientAlerts = () => {
+    const alerts = [];
+    const now = new Date();
+    
+    // Clientes em risco de abandono (90+ dias sem contato)
+    const clientsAtRisk = clients.filter(client => {
+      const daysSinceLastContact = Math.floor((now.getTime() - new Date(client.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+      return daysSinceLastContact > 90;
+    });
+
+    if (clientsAtRisk.length > 0) {
+      alerts.push({
+        type: 'critical',
+        icon: AlertTriangle,
+        title: 'Clientes em Risco',
+        count: clientsAtRisk.length,
+        description: 'Sem contato há mais de 90 dias'
+      });
+    }
+
+    // Aniversários próximos (próximos 7 dias)
+    const upcomingBirthdays = clients.filter(client => {
+      if (!client.birthDate) return false;
+      const birth = new Date(client.birthDate);
+      const nextBirthday = new Date(now.getFullYear(), birth.getMonth(), birth.getDate());
+      if (nextBirthday < now) {
+        nextBirthday.setFullYear(now.getFullYear() + 1);
+      }
+      const daysUntilBirthday = Math.floor((nextBirthday.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      return daysUntilBirthday <= 7 && daysUntilBirthday >= 0;
+    });
+
+    if (upcomingBirthdays.length > 0) {
+      alerts.push({
+        type: 'opportunity',
+        icon: Calendar,
+        title: 'Aniversários Próximos',
+        count: upcomingBirthdays.length,
+        description: 'Oportunidade de contato especial'
+      });
+    }
+
+    // Clientes com alto potencial (múltiplas preferências)
+    const highValueClients = clients.filter(client => 
+      client.preferences && client.preferences.length >= 3
+    );
+
+    if (highValueClients.length > 0) {
+      alerts.push({
+        type: 'commercial',
+        icon: DollarSign,
+        title: 'Alto Potencial',
+        count: highValueClients.length,
+        description: 'Clientes com múltiplos interesses'
+      });
+    }
+
+    return alerts;
+  };
+
+  const alerts = getClientAlerts();
 
   return (
     <div className="space-y-6">
@@ -95,6 +159,61 @@ export function ClientDashboard({ clients }: ClientDashboardProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Alertas Críticos */}
+      {alerts.length > 0 && (
+        <Card className="border-warning/20 shadow-soft">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-warning">
+              <AlertTriangle className="h-5 w-5" />
+              Alertas Críticos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {alerts.map((alert, index) => {
+                const Icon = alert.icon;
+                const getAlertStyles = (type: string) => {
+                  switch (type) {
+                    case 'critical':
+                      return 'border-destructive/20 bg-destructive/5 text-destructive';
+                    case 'opportunity':
+                      return 'border-primary/20 bg-primary/5 text-primary';
+                    case 'commercial':
+                      return 'border-secondary/20 bg-secondary/5 text-secondary-foreground';
+                    default:
+                      return 'border-muted bg-muted/5 text-muted-foreground';
+                  }
+                };
+
+                return (
+                  <Alert key={index} className={`p-4 ${getAlertStyles(alert.type)}`}>
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-full bg-background/80">
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="font-semibold text-sm">{alert.title}</p>
+                          <Badge 
+                            variant="secondary" 
+                            className="text-xs font-bold"
+                          >
+                            {alert.count}
+                          </Badge>
+                        </div>
+                        <AlertDescription className="text-xs mt-1 opacity-80">
+                          {alert.description}
+                        </AlertDescription>
+                      </div>
+                    </div>
+                  </Alert>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Recent Clients and Top Preferences */}
       <div className="grid gap-6 lg:grid-cols-2">
