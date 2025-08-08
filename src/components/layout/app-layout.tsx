@@ -17,10 +17,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           {/* Header with sidebar trigger */}
           <header className="h-14 border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-40">
             <div className="flex items-center justify-between px-4 h-full">
-              <SidebarTrigger>
-                <Menu className="h-5 w-5" />
-                <span className="sr-only">Toggle Sidebar</span>
-              </SidebarTrigger>
+              <SidebarTrigger className="lg:hidden" />
               
               <div className="flex items-center gap-4">
                 <div className="hidden sm:block text-sm text-muted-foreground">
