@@ -2,7 +2,9 @@ import { useState } from "react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { StaffDashboard } from "@/components/staff/staff-dashboard";
+import { StaffForm } from "@/components/staff/staff-form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Staff } from "@/types/staff";
 import { Plus, Users, BarChart3 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -83,13 +85,50 @@ const mockStaff: Staff[] = [
 export default function StaffManagement() {
   const [staff, setStaff] = useState<Staff[]>(mockStaff);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
   const { toast } = useToast();
 
   const handleNewStaff = () => {
-    toast({
-      title: "Em desenvolvimento",
-      description: "Funcionalidade de cadastro de funcionários em breve.",
-    });
+    setEditingStaff(null);
+    setIsFormOpen(true);
+  };
+
+  const handleSaveStaff = (staffData: Omit<Staff, 'id' | 'createdAt' | 'updatedAt'>) => {
+    if (editingStaff) {
+      // Update existing staff
+      const updatedStaff: Staff = {
+        ...editingStaff,
+        ...staffData,
+        updatedAt: new Date().toISOString()
+      };
+      setStaff(prev => prev.map(s => s.id === editingStaff.id ? updatedStaff : s));
+      toast({
+        title: "Funcionário atualizado!",
+        description: "Os dados do funcionário foram atualizados com sucesso.",
+      });
+    } else {
+      // Create new staff
+      const newStaff: Staff = {
+        ...staffData,
+        id: Math.random().toString(36).substr(2, 9),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      setStaff(prev => [newStaff, ...prev]);
+      toast({
+        title: "Funcionário cadastrado!",
+        description: "Novo funcionário foi adicionado ao sistema.",
+      });
+    }
+    
+    setIsFormOpen(false);
+    setEditingStaff(null);
+  };
+
+  const handleCancelForm = () => {
+    setIsFormOpen(false);
+    setEditingStaff(null);
   };
 
   return (
@@ -98,10 +137,12 @@ export default function StaffManagement() {
         title="Gerenciamento de Equipe"
         description="Gerencie sua equipe, especializações e desempenho"
       >
-        <Button onClick={handleNewStaff} className="gap-2 shadow-elegant">
-          <Plus className="h-4 w-4" />
-          Novo Funcionário
-        </Button>
+        {!isFormOpen && (
+          <Button onClick={handleNewStaff} className="gap-2 shadow-elegant">
+            <Plus className="h-4 w-4" />
+            Novo Funcionário
+          </Button>
+        )}
       </PageHeader>
 
       <div className="container mx-auto px-4 py-8">
@@ -134,7 +175,23 @@ export default function StaffManagement() {
               </Button>
             </div>
           </TabsContent>
+
         </Tabs>
+
+        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {editingStaff ? "Editar Funcionário" : "Novo Funcionário"}
+              </DialogTitle>
+            </DialogHeader>
+            <StaffForm
+              staff={editingStaff}
+              onSave={handleSaveStaff}
+              onCancel={handleCancelForm}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

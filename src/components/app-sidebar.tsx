@@ -84,9 +84,6 @@ export function AppSidebar() {
                 <h1 className="font-bold text-lg bg-gradient-primary bg-clip-text text-transparent">
                   Studio Elas
                 </h1>
-                <p className="text-xs text-muted-foreground">
-                  Sistema de Gestão
-                </p>
               </div>
             )}
           </div>
@@ -116,13 +113,6 @@ export function AppSidebar() {
                             <span className="font-medium text-sm">
                               {item.title}
                             </span>
-                            <p className={`text-xs ${
-                              isActive(item.url)
-                                ? "text-primary-foreground/80"
-                                : "text-muted-foreground"
-                            }`}>
-                              {item.description}
-                            </p>
                           </div>
                         )}
                       </div>

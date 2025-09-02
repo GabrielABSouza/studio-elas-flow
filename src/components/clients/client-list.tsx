@@ -44,8 +44,8 @@ export function ClientList({ clients, onClientSelect, onNewClient, onEditClient 
 
   return (
     <div className="space-y-6">
-      {/* Header with search and add button */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      {/* Header with search */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -55,10 +55,6 @@ export function ClientList({ clients, onClientSelect, onNewClient, onEditClient 
             className="pl-10"
           />
         </div>
-        <Button onClick={onNewClient} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nova Cliente
-        </Button>
       </div>
 
       {/* Clients grid */}
@@ -67,7 +63,7 @@ export function ClientList({ clients, onClientSelect, onNewClient, onEditClient 
           <Card
             key={client.id}
             className="cursor-pointer transition-all hover:shadow-elegant hover:scale-[1.02] group"
-            onClick={() => onClientSelect(client)}
+            onClick={() => onEditClient(client)}
           >
             <CardContent className="p-6">
               <div className="flex items-start justify-between">

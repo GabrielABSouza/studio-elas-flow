@@ -1,8 +1,13 @@
 import { Users, UserPlus, Calendar, TrendingUp, AlertTriangle, Clock, DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Client } from "@/types/client";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface ClientDashboardProps {
   clients: Client[];
@@ -55,7 +60,8 @@ export function ClientDashboard({ clients }: ClientDashboardProps) {
         icon: AlertTriangle,
         title: 'Clientes em Risco',
         count: clientsAtRisk.length,
-        description: 'Sem contato há mais de 90 dias'
+        description: 'Sem contato há mais de 90 dias',
+        clients: clientsAtRisk
       });
     }
 
@@ -77,7 +83,8 @@ export function ClientDashboard({ clients }: ClientDashboardProps) {
         icon: Calendar,
         title: 'Aniversários Próximos',
         count: upcomingBirthdays.length,
-        description: 'Oportunidade de contato especial'
+        description: 'Oportunidade de contato especial',
+        clients: upcomingBirthdays
       });
     }
 
@@ -92,7 +99,8 @@ export function ClientDashboard({ clients }: ClientDashboardProps) {
         icon: DollarSign,
         title: 'Alto Potencial',
         count: highValueClients.length,
-        description: 'Clientes com múltiplos interesses'
+        description: 'Clientes com múltiplos interesses',
+        clients: highValueClients
       });
     }
 
@@ -187,27 +195,43 @@ export function ClientDashboard({ clients }: ClientDashboardProps) {
                 };
 
                 return (
-                  <Alert key={index} className={`p-4 ${getAlertStyles(alert.type)}`}>
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-full bg-background/80">
-                        <Icon className="h-4 w-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="font-semibold text-sm">{alert.title}</p>
-                          <Badge 
-                            variant="secondary" 
-                            className="text-xs font-bold"
-                          >
-                            {alert.count}
-                          </Badge>
+                  <DropdownMenu key={index}>
+                    <DropdownMenuTrigger asChild>
+                      <div className={`p-4 rounded-lg border cursor-pointer ${getAlertStyles(alert.type)}`}>
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 rounded-full bg-background/80">
+                            <Icon className="h-4 w-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <p className="font-semibold text-sm">{alert.title}</p>
+                              <Badge 
+                                variant="secondary" 
+                                className="text-xs font-bold"
+                              >
+                                {alert.count}
+                              </Badge>
+                            </div>
+                            <p className="text-xs mt-1 opacity-80">
+                              {alert.description}
+                            </p>
+                          </div>
                         </div>
-                        <AlertDescription className="text-xs mt-1 opacity-80">
-                          {alert.description}
-                        </AlertDescription>
                       </div>
-                    </div>
-                  </Alert>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-64 max-h-80 overflow-y-auto">
+                      {alert.clients && alert.clients.map((client: Client) => (
+                        <DropdownMenuItem key={client.id} className="cursor-pointer">
+                          <div className="flex flex-col">
+                            <span className="font-medium">{client.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {client.phone || client.email || 'Sem contato'}
+                            </span>
+                          </div>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 );
               })}
             </div>

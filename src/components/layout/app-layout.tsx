@@ -15,7 +15,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         
         <div className="flex-1 flex flex-col">
           {/* Header with sidebar trigger */}
-          <header className="h-14 border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-40">
+          <header className="h-14 bg-background/80 backdrop-blur-sm sticky top-0 z-40">
             <div className="flex items-center justify-between px-4 h-full">
               <SidebarTrigger className="lg:hidden" />
               

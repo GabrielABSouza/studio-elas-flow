@@ -85,26 +85,32 @@ const Index = () => {
 
         {/* Stats Preview */}
         <div className="grid gap-4 md:grid-cols-3 mb-12">
-          <Card className="text-center border-primary/20 shadow-soft">
-            <CardContent className="pt-6">
-              <div className="text-3xl font-bold text-primary mb-2">127</div>
-              <p className="text-sm text-muted-foreground">Clientes Ativas</p>
-            </CardContent>
-          </Card>
+          <Link to="/clients">
+            <Card className="text-center border-primary/20 shadow-soft cursor-pointer transition-all duration-200 hover:shadow-elegant hover:-translate-y-1 hover:border-primary/30">
+              <CardContent className="pt-6">
+                <div className="text-3xl font-bold text-primary mb-2">127</div>
+                <p className="text-sm text-muted-foreground">Clientes Ativas</p>
+              </CardContent>
+            </Card>
+          </Link>
           
-          <Card className="text-center border-primary/20 shadow-soft">
-            <CardContent className="pt-6">
-              <div className="text-3xl font-bold text-primary mb-2">8</div>
-              <p className="text-sm text-muted-foreground">Agendamentos Hoje</p>
-            </CardContent>
-          </Card>
+          <Link to="/schedule">
+            <Card className="text-center border-primary/20 shadow-soft cursor-pointer transition-all duration-200 hover:shadow-elegant hover:-translate-y-1 hover:border-primary/30">
+              <CardContent className="pt-6">
+                <div className="text-3xl font-bold text-primary mb-2">8</div>
+                <p className="text-sm text-muted-foreground">Agendamentos Hoje</p>
+              </CardContent>
+            </Card>
+          </Link>
           
-          <Card className="text-center border-primary/20 shadow-soft">
-            <CardContent className="pt-6">
-              <div className="text-3xl font-bold text-primary mb-2">5</div>
-              <p className="text-sm text-muted-foreground">Equipe Ativa</p>
-            </CardContent>
-          </Card>
+          <Link to="/staff">
+            <Card className="text-center border-primary/20 shadow-soft cursor-pointer transition-all duration-200 hover:shadow-elegant hover:-translate-y-1 hover:border-primary/30">
+              <CardContent className="pt-6">
+                <div className="text-3xl font-bold text-primary mb-2">5</div>
+                <p className="text-sm text-muted-foreground">Equipe Ativa</p>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
 
         {/* Welcome Message */}

@@ -5,6 +5,7 @@ import { ClientList } from "@/components/clients/client-list";
 import { ClientForm } from "@/components/clients/client-form";
 import { ClientDashboard } from "@/components/clients/client-dashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Client } from "@/types/client";
 import { Plus, Users, BarChart3 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -69,13 +70,11 @@ export default function ClientManagement() {
   const handleNewClient = () => {
     setEditingClient(null);
     setIsFormOpen(true);
-    setActiveTab("form");
   };
 
   const handleEditClient = (client: Client) => {
     setEditingClient(client);
     setIsFormOpen(true);
-    setActiveTab("form");
   };
 
   const handleSaveClient = (clientData: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -108,13 +107,11 @@ export default function ClientManagement() {
     
     setIsFormOpen(false);
     setEditingClient(null);
-    setActiveTab("clients");
   };
 
   const handleCancelForm = () => {
     setIsFormOpen(false);
     setEditingClient(null);
-    setActiveTab("clients");
   };
 
   return (
@@ -123,10 +120,12 @@ export default function ClientManagement() {
         title="Gerenciamento de Clientes"
         description="Gerencie todas as informações das suas clientes em um só lugar"
       >
-        <Button onClick={handleNewClient} className="gap-2 shadow-elegant">
-          <Plus className="h-4 w-4" />
-          Nova Cliente
-        </Button>
+        {!isFormOpen && (
+          <Button onClick={handleNewClient} className="gap-2 shadow-elegant">
+            <Plus className="h-4 w-4" />
+            Nova Cliente
+          </Button>
+        )}
       </PageHeader>
 
       <div className="container mx-auto px-4 py-8">
@@ -155,16 +154,22 @@ export default function ClientManagement() {
             />
           </TabsContent>
 
-          {isFormOpen && (
-            <TabsContent value="form" className="space-y-6">
-              <ClientForm
-                client={editingClient}
-                onSave={handleSaveClient}
-                onCancel={handleCancelForm}
-              />
-            </TabsContent>
-          )}
         </Tabs>
+
+        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {editingClient ? "Editar Cliente" : "Nova Cliente"}
+              </DialogTitle>
+            </DialogHeader>
+            <ClientForm
+              client={editingClient}
+              onSave={handleSaveClient}
+              onCancel={handleCancelForm}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
