@@ -1,16 +1,16 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/components/ui/page-header';
-import { DateNav } from '@/features/agenda/components/DateNav';
-import { ViewSwitcher } from '@/features/agenda/components/ViewSwitcher';
-import { DayGrid } from '@/features/agenda/components/DayGrid';
-import { WeekGrid } from '@/features/agenda/components/WeekGrid';
-import { MonthGrid } from '@/features/agenda/components/MonthGrid';
-import { formatLocalDate, isValidDate } from '@/features/agenda/utils';
+import { DateNav } from '../components/DateNav';
+import { ViewSwitcher } from '../components/ViewSwitcher';
+import { DayGrid } from '../components/DayGrid';
+import { WeekGrid } from '../components/WeekGrid';
+import { MonthGrid } from '../components/MonthGrid';
+import { formatLocalDate, isValidDate } from '../utils';
 
 type ViewType = 'day' | 'week' | 'month';
 
-export default function Schedule() {
+export default function AgendaPage() {
   const [view, setView] = useState<ViewType>('day');
   const [date, setDate] = useState<string>(formatLocalDate(new Date()));
   const [searchParams] = useSearchParams();
@@ -38,7 +38,7 @@ export default function Schedule() {
     params.set('date', date);
     
     navigate({ 
-      pathname: '/schedule', 
+      pathname: '/agenda', 
       search: params.toString() 
     }, { 
       replace: true 
