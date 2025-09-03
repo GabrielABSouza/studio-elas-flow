@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,7 @@ import { Client } from "@/types/client";
 
 interface ClientFormProps {
   client?: Client | null;
-  onSave: (client: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  onSave: (client: Omit<Client, 'id' | 'createdAt' | 'updatedAt'> & { anamnesisForm?: File | null, photo?: File | null }) => void;
   onCancel: () => void;
 }
 
@@ -41,9 +41,13 @@ export function ClientForm({ client, onSave, onCancel }: ClientFormProps) {
     },
     preferences: client?.preferences || [],
     notes: client?.notes || "",
+    anamnesisForm: null as File | null,
+    photo: null as File | null,
   });
 
   const [newPreference, setNewPreference] = useState("");
+  const anamnesisInputRef = useRef<HTMLInputElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,6 +69,14 @@ export function ClientForm({ client, onSave, onCancel }: ClientFormProps) {
       ...prev,
       preferences: prev.preferences.filter(p => p !== preference)
     }));
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, files } = e.target;
+    if (files && files.length > 0) {
+      setFormData(prev => ({ ...prev, [name]: files[0] }));
+      console.log(`Selected file for ${name}:`, files[0].name);
+    }
   };
 
   return (
@@ -247,6 +259,53 @@ export function ClientForm({ client, onSave, onCancel }: ClientFormProps) {
               <Plus className="h-4 w-4" />
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Anexos</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex items-center gap-4">
+            <Button 
+              type="button" 
+              variant="outline"
+              onClick={() => anamnesisInputRef.current?.click()}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Adicionar Ficha de anamnese
+            </Button>
+            {formData.anamnesisForm && <span className="text-sm text-muted-foreground">{formData.anamnesisForm.name}</span>}
+          </div>
+          <div className="flex items-center gap-4">
+            <Button 
+              type="button" 
+              variant="outline"
+              onClick={() => photoInputRef.current?.click()}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Adicionar Foto
+            </Button>
+            {formData.photo && <span className="text-sm text-muted-foreground">{formData.photo.name}</span>}
+          </div>
+
+          <input
+            type="file"
+            name="anamnesisForm"
+            ref={anamnesisInputRef}
+            onChange={handleFileChange}
+            className="hidden"
+            accept=".pdf,.doc,.docx"
+          />
+          <input
+            type="file"
+            name="photo"
+            ref={photoInputRef}
+            onChange={handleFileChange}
+            className="hidden"
+            accept="image/*"
+          />
         </CardContent>
       </Card>
 

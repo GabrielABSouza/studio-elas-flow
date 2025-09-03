@@ -1,12 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchProfessionals, fetchAppointments, completeAppointment } from './api';
-import { ISODate, Professional, Appointment } from './types';
+import { ISODate, Professional, Appointment, ProcedureCatalog } from './types';
 import { shiftDays, getWeekStart, getMonthStart } from './utils';
 
 // Query keys estáveis
 export const agendaKeys = {
   all: ['agenda'] as const,
   professionals: () => [...agendaKeys.all, 'professionals'] as const,
+  procedures: () => [...agendaKeys.all, 'procedures'] as const,
   day: (date: ISODate) => [...agendaKeys.all, 'day', date] as const,
   week: (weekStart: ISODate) => [...agendaKeys.all, 'week', weekStart] as const,
   month: (monthStart: ISODate) => [...agendaKeys.all, 'month', monthStart] as const,
@@ -98,6 +99,37 @@ export function useAgendaMonth(date: ISODate) {
   };
 }
 
+// Hooks para catálogos
+export function useProceduresCatalog() {
+  return useQuery({
+    queryKey: agendaKeys.procedures(),
+    queryFn: async (): Promise<ProcedureCatalog[]> => {
+      // Mock data - adapte para sua API
+      return [
+        { id: '1', name: 'Limpeza de Pele', defaultPrice: 80.00 },
+        { id: '2', name: 'Hidratação Facial', defaultPrice: 60.00 },
+        { id: '3', name: 'Design de Sobrancelhas', defaultPrice: 35.00 },
+        { id: '4', name: 'Extensão de Cílios', defaultPrice: 120.00 },
+        { id: '5', name: 'Microagulhamento', defaultPrice: 150.00 },
+        { id: '6', name: 'Peeling Químico', defaultPrice: 100.00 },
+        { id: '7', name: 'Drenagem Linfática', defaultPrice: 90.00 },
+        { id: '8', name: 'Radiofrequência', defaultPrice: 110.00 },
+      ];
+    },
+    staleTime: 10 * 60 * 1000, // 10 minutos
+  });
+}
+
+export function useProfessionalsCatalog() {
+  // Reutiliza o hook existente, mas retorna apenas id e name
+  const { data: professionals = [], ...rest } = useProfessionals();
+  
+  return {
+    data: professionals.map(p => ({ id: p.id, name: p.name })),
+    ...rest,
+  };
+}
+
 export function useCompleteAppointment() {
   const queryClient = useQueryClient();
 
@@ -105,7 +137,7 @@ export function useCompleteAppointment() {
     mutationFn: ({ appointmentId, data }: {
       appointmentId: string;
       data: { 
-        items: Array<{ procedureId: string; name: string; price: number; quantity: number; professionalId: string }>; 
+        items: Array<{ id: string; procedureId: string; name: string; price: number; qty: number; professionalId: string }>; 
         total: number; 
         paymentMethod: string 
       };

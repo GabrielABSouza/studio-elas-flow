@@ -23,6 +23,12 @@ export interface Procedure {
   price: number;
 }
 
+export interface ProcedureCatalog {
+  id: string;
+  name: string;
+  defaultPrice: number;
+}
+
 export interface PaymentInfo {
   method?: PaymentMethod;
   status?: PaymentStatus;
@@ -43,11 +49,12 @@ export interface Appointment {
 }
 
 export interface ProcedureItem {
+  id: string;
   procedureId: string;
+  professionalId: string;
   name: string;
   price: number;
-  quantity: number;
-  professionalId: string;
+  qty: number;
 }
 
 export interface POSInput {

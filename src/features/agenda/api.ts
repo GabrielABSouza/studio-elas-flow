@@ -124,7 +124,7 @@ export async function fetchAppointments(params: {
 }
 
 export async function completeAppointment(appointmentId: string, data: {
-  items: Array<{ procedureId: string; name: string; price: number; quantity: number; professionalId: string }>;
+  items: Array<{ id: string; procedureId: string; name: string; price: number; qty: number; professionalId: string }>;
   total: number;
   paymentMethod: string;
 }): Promise<void> {
