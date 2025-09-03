@@ -3,9 +3,25 @@ import { Badge } from '@/components/ui/badge';
 import { Clock } from 'lucide-react';
 import { useAgendaDay } from '../hooks';
 import { hhmmRange, indexAppointments, detectOverlaps, formatDisplayDate } from '../utils';
-import { AppointmentCard } from './AppointmentCard';
+import { AppointmentPill } from './AppointmentPill';
 import { POSDrawer } from './POSDrawer';
-import { Appointment } from '../types';
+import { Appointment, AppointmentStatus } from '../types';
+
+// Mapeia nossos status para os do AppointmentPill
+function mapStatus(status: AppointmentStatus): "to_confirm" | "confirmed" | "completed" {
+  switch (status) {
+    case 'scheduled':
+      return 'to_confirm';
+    case 'in_service':
+    case 'completed':
+      return status === 'completed' ? 'completed' : 'confirmed';
+    case 'no_show':
+    case 'canceled':
+      return 'confirmed'; // fallback
+    default:
+      return 'confirmed';
+  }
+}
 
 interface DayGridProps {
   date: string;
@@ -13,7 +29,7 @@ interface DayGridProps {
 
 export function DayGrid({ date }: DayGridProps) {
   const { professionals, appointments, isLoading } = useAgendaDay(date);
-  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [active, setActive] = useState<Appointment | null>(null);
   
   const slots = useMemo(() => hhmmRange(8, 20, 30), []);
   const appointmentIndex = useMemo(() => indexAppointments(appointments, date), [appointments, date]);
@@ -46,71 +62,56 @@ export function DayGrid({ date }: DayGridProps) {
           </h2>
         </div>
         
-        <div className="overflow-x-auto">
+        <div className="overflow-auto">
           <div className="min-w-[800px]">
-            {/* Header com horários */}
-            <div className="sticky top-0 z-10 bg-muted/70 backdrop-blur border-b grid" style={{ gridTemplateColumns: '200px repeat(' + slots.length + ', 1fr)' }}>
-              <div className="p-2" aria-hidden="true"></div>
-              {slots.map((slot) => (
-                <div key={slot} className="p-2 text-xs text-center font-medium text-muted-foreground border-l">
-                  {slot}
-                </div>
+            {/* cabeçalho de horários com separação clara */}
+            <div
+              className="sticky top-0 z-10 grid bg-muted/70 backdrop-blur border-b"
+              style={{ gridTemplateColumns: `200px repeat(${slots.length}, minmax(90px,1fr))` }}
+            >
+              <div aria-hidden className="p-2 text-xs" /> {/* vazio: remove 'Profissional' */}
+              {slots.map((s) => (
+                <div key={s} className="p-2 text-xs text-muted-foreground text-center">{s}</div>
               ))}
             </div>
-              
-            {/* Grid de profissionais e horários */}
-            <div className="grid" style={{ gridTemplateColumns: '200px repeat(' + slots.length + ', 1fr)' }}>
-              {professionals.map((professional) => {
-                const profAppointments = appointmentIndex.get(professional.id);
-                
-                return (
-                  <React.Fragment key={professional.id}>
-                    <div className="sticky left-0 z-10 bg-background border-r border-t p-3">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: professional.color || '#8B5CF6' }}
-                        />
-                        <div>
-                          <div className="font-medium text-sm">{professional.name}</div>
-                          {professional.role && (
-                            <div className="text-xs text-muted-foreground">
-                              {professional.role}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+
+            {/* linhas por profissional com primeira coluna sticky */}
+            <div className="grid" style={{ gridTemplateColumns: `200px repeat(${slots.length}, minmax(90px,1fr))` }}>
+              {professionals.map((p) => (
+                <React.Fragment key={p.id}>
+                  <div className="sticky left-0 z-10 bg-background border-r border-t p-2">
+                    <div className="text-sm font-medium leading-tight">{p.name}</div>
+                    {p.role ? <div className="text-xs text-muted-foreground">{p.role}</div> : null}
+                  </div>
+
+                  {slots.map((s) => {
+                    const slotAppointments = appointmentIndex.get(p.id)?.get(s) ?? [];
+                    const appt = slotAppointments[0]; // pega primeiro agendamento do slot
                     
-                    {slots.map((slot) => {
-                      const slotAppointments = profAppointments?.get(slot) ?? [];
-                      
-                      return (
-                        <div
-                          key={`${professional.id}-${slot}`}
-                          className="min-h-[80px] p-1 border-l border-t hover:bg-muted/40 transition-colors relative"
-                        >
-                          {slotAppointments.slice(0, 2).map((appointment) => (
-                            <div key={appointment.id} className="mb-1">
-                              <AppointmentCard
-                                appointment={appointment}
-                                isOverlap={overlaps.has(appointment.id)}
-                                onClick={() => setSelectedAppointment(appointment)}
-                              />
-                            </div>
-                          ))}
-                          
-                          {slotAppointments.length > 2 && (
+                    return (
+                      <div key={p.id + s} className="border-t border-l p-1">
+                        {appt ? (
+                          <AppointmentPill
+                            customerName={appt.customer.name}
+                            subtitle={appt.procedures?.[0]?.name}
+                            status={mapStatus(appt.status)}
+                            onOpen={() => setActive(appt)}
+                          />
+                        ) : null}
+                        
+                        {/* Mostra mais agendamentos se houver */}
+                        {slotAppointments.length > 1 && (
+                          <div className="mt-1">
                             <Badge variant="secondary" className="text-xs">
-                              +{slotAppointments.length - 2}
+                              +{slotAppointments.length - 1}
                             </Badge>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </React.Fragment>
-                );
-              })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
             </div>
           </div>
           
@@ -120,11 +121,11 @@ export function DayGrid({ date }: DayGridProps) {
         </div>
       </div>
       
-      {selectedAppointment && (
+      {active && (
         <POSDrawer
-          appointment={selectedAppointment}
-          isOpen={!!selectedAppointment}
-          onClose={() => setSelectedAppointment(null)}
+          appointment={active}
+          isOpen={!!active}
+          onClose={() => setActive(null)}
         />
       )}
     </>
