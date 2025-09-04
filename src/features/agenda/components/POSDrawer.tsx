@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,6 +10,7 @@ import { DollarSign, CreditCard, Banknote, Pencil, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Appointment, ProcedureCatalog, ProcedureItem } from '../types';
 import { useCompleteAppointment, useProceduresCatalog, useProfessionalsCatalog } from '../hooks';
+import { usePaymentMethods } from '../../settings/hooks';
 import { moneyFmt } from '../utils';
 
 const itemSchema = z.object({
@@ -23,7 +24,7 @@ const itemSchema = z.object({
 
 const posSchema = z.object({
   items: z.array(itemSchema).min(1),
-  paymentMethod: z.enum(['cash', 'pix', 'credit_1x', 'credit_2x', 'debit', 'voucher']),
+  paymentMethod: z.string().min(1),
   discountPct: z.number().min(0).max(100).optional(),
   discountValue: z.number().min(0).optional(),
   finalTotal: z.number().min(0).optional(),
@@ -36,16 +37,14 @@ interface POSDrawerProps {
   appointment: Appointment;
   isOpen: boolean;
   onClose: () => void;
+  onComplete?: (posData: {
+    items: Array<{ id: string; procedureId: string; name: string; price: number; qty: number; professionalId: string }>; 
+    total: number; 
+    paymentMethod: string;
+  }) => void;
 }
 
-const paymentMethods = [
-  { value: 'cash', label: 'Dinheiro', icon: Banknote },
-  { value: 'pix', label: 'PIX', icon: DollarSign },
-  { value: 'credit_1x', label: 'Crédito 1x', icon: CreditCard },
-  { value: 'credit_2x', label: 'Crédito 2x', icon: CreditCard },
-  { value: 'debit', label: 'Débito', icon: CreditCard },
-  { value: 'voucher', label: 'Voucher', icon: DollarSign },
-];
+// Payment methods are now managed via Settings
 
 function EditIconButton({
   active, label, onClick,
@@ -160,15 +159,19 @@ function ProcedureRow({
   );
 }
 
-export function POSDrawer({ appointment, isOpen, onClose }: POSDrawerProps) {
+export function POSDrawer({ appointment, isOpen, onClose, onComplete }: POSDrawerProps) {
   const [editItems, setEditItems] = useState(false);
   const [editFinalTotal, setEditFinalTotal] = useState(false);
   const [canEditCommission, setCanEditCommission] = useState(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
+  const editItemsRef = useRef<HTMLDivElement>(null);
+  const editFinalTotalRef = useRef<HTMLDivElement>(null);
+  const editCommissionRef = useRef<HTMLDivElement>(null);
   
   const completeAppointment = useCompleteAppointment();
   const { data: procedures = [] } = useProceduresCatalog();
   const { data: professionals = [] } = useProfessionalsCatalog();
+  const { data: paymentMethodsFromSettings = [] } = usePaymentMethods();
   
   const form = useForm<POSFormData>({
     resolver: zodResolver(posSchema),
@@ -181,7 +184,7 @@ export function POSDrawer({ appointment, isOpen, onClose }: POSDrawerProps) {
         price: proc.price,
         qty: 1,
       })),
-      paymentMethod: 'cash',
+      paymentMethod: paymentMethodsFromSettings?.[0]?.id || '',
       discountPct: 0,
       discountValue: 0,
       finalTotal: undefined,
@@ -195,7 +198,7 @@ export function POSDrawer({ appointment, isOpen, onClose }: POSDrawerProps) {
   });
 
   const watchedValues = form.watch();
-  const { items = [], discountPct = 0, discountValue = 0, finalTotal, commissionPct = 40 } = watchedValues;
+  const { items = [], discountPct = 0, discountValue = 0, finalTotal, commissionPct = 40, paymentMethod } = watchedValues;
 
   // Cálculos baseados nos items
   const subtotal = items.reduce((sum, item) => sum + (item.price * item.qty), 0);
@@ -203,6 +206,15 @@ export function POSDrawer({ appointment, isOpen, onClose }: POSDrawerProps) {
   const calculatedTotal = subtotal - discountAmount;
   const actualTotal = finalTotal !== undefined ? finalTotal : calculatedTotal;
   const commissionAmount = actualTotal * (commissionPct / 100);
+
+  // Fee calculation
+  const selectedPaymentMethod = paymentMethodsFromSettings.find(pm => pm.id === paymentMethod);
+  const feeAmount = selectedPaymentMethod 
+    ? selectedPaymentMethod.feeType === "percent" 
+      ? (actualTotal * selectedPaymentMethod.feeValue) / 100
+      : selectedPaymentMethod.feeValue
+    : 0;
+  const netAmount = actualTotal - feeAmount;
 
   // Focus management
   useEffect(() => {
@@ -223,26 +235,64 @@ export function POSDrawer({ appointment, isOpen, onClose }: POSDrawerProps) {
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose]);
 
+  // Click outside to exit edit modes
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      
+      // Exit edit items mode if clicking outside
+      if (editItems && editItemsRef.current && !editItemsRef.current.contains(target)) {
+        setEditItems(false);
+      }
+      
+      // Exit edit final total mode if clicking outside
+      if (editFinalTotal && editFinalTotalRef.current && !editFinalTotalRef.current.contains(target)) {
+        setEditFinalTotal(false);
+      }
+      
+      // Exit edit commission mode if clicking outside
+      if (canEditCommission && editCommissionRef.current && !editCommissionRef.current.contains(target)) {
+        setCanEditCommission(false);
+      }
+    };
+
+    if (editItems || editFinalTotal || canEditCommission) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [editItems, editFinalTotal, canEditCommission]);
+
   const onSubmit = async (data: POSFormData) => {
-    try {
-      await completeAppointment.mutateAsync({
-        appointmentId: appointment.id,
-        data: {
-          items: data.items,
-          total: actualTotal,
-          paymentMethod: data.paymentMethod,
-        },
+    if (onComplete) {
+      // Pass the POS data to parent for handling
+      onComplete({
+        items: data.items,
+        total: actualTotal,
+        paymentMethod: data.paymentMethod,
       });
+    } else {
+      // Fallback: handle completion directly (for backwards compatibility)
+      try {
+        await completeAppointment.mutateAsync({
+          appointmentId: appointment.id,
+          data: {
+            items: data.items,
+            total: actualTotal,
+            paymentMethod: data.paymentMethod,
+          },
+        });
 
-      toast.success('Agendamento finalizado com sucesso!', {
-        description: `Total: ${moneyFmt.format(actualTotal)}`,
-      });
+        toast.success('Agendamento finalizado com sucesso!', {
+          description: `Total: ${moneyFmt.format(actualTotal)}`,
+        });
 
-      onClose();
-    } catch (error) {
-      toast.error('Erro ao finalizar agendamento', {
-        description: 'Tente novamente ou contate o suporte.',
-      });
+        onClose();
+      } catch (error) {
+        toast.error('Erro ao finalizar agendamento', {
+          description: 'Tente novamente ou contate o suporte.',
+        });
+      }
     }
   };
 
@@ -254,6 +304,12 @@ export function POSDrawer({ appointment, isOpen, onClose }: POSDrawerProps) {
         aria-modal="true"
         aria-labelledby="pos-title"
       >
+        <DialogDescription className="sr-only">
+          Finalizar atendimento - registre os procedimentos realizados e forma de pagamento
+        </DialogDescription>
+        <DialogTitle className="sr-only">
+          Finalizar Atendimento
+        </DialogTitle>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           {/* header */}
           <div className="flex items-center justify-between">
@@ -285,7 +341,7 @@ export function POSDrawer({ appointment, isOpen, onClose }: POSDrawerProps) {
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2" ref={editItemsRef}>
                 {/* Headers */}
                 <div className="grid grid-cols-[minmax(220px,1fr)_minmax(180px,1fr)_110px_88px_36px] items-center gap-2 px-2 text-xs text-muted-foreground">
                   <div>Procedimento</div>
@@ -332,7 +388,7 @@ export function POSDrawer({ appointment, isOpen, onClose }: POSDrawerProps) {
 
             {/* Coluna direita — Resumo, desconto, comissão, pagamento */}
             <aside className="space-y-4">
-              <div className="rounded-xl border bg-card p-3">
+              <div className="rounded-xl border bg-card p-3" ref={editFinalTotalRef}>
                 <div className="flex items-center justify-between">
                   <div className="text-sm font-medium">Valores</div>
                   <EditIconButton
@@ -388,7 +444,7 @@ export function POSDrawer({ appointment, isOpen, onClose }: POSDrawerProps) {
                 </div>
               </div>
 
-              <div className="rounded-xl border bg-card p-3">
+              <div className="rounded-xl border bg-card p-3" ref={editCommissionRef}>
                 <div className="flex items-center justify-between">
                   <div className="text-sm font-medium">% Comissão</div>
                   <EditIconButton
@@ -409,6 +465,36 @@ export function POSDrawer({ appointment, isOpen, onClose }: POSDrawerProps) {
                 </div>
               </div>
 
+              {/* Fee Breakdown */}
+              {selectedPaymentMethod && feeAmount > 0 && (
+                <div className="rounded-xl border bg-card p-3">
+                  <div className="text-sm font-medium mb-2">Custo da Modalidade</div>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Taxa</span>
+                      <span>
+                        {selectedPaymentMethod.feeType === "percent" 
+                          ? `${selectedPaymentMethod.feeValue}%`
+                          : selectedPaymentMethod.feeValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                        }
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Custo</span>
+                      <span className="text-destructive">
+                        {feeAmount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                      </span>
+                    </div>
+                    <div className="flex justify-between border-t pt-1 font-medium">
+                      <span>Recebido Líquido</span>
+                      <span className="text-emerald-600">
+                        {netAmount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="rounded-xl border bg-card p-3">
                 <div className="text-sm font-medium">Forma de Pagamento</div>
                 <Select
@@ -419,17 +505,24 @@ export function POSDrawer({ appointment, isOpen, onClose }: POSDrawerProps) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {paymentMethods.map((method) => {
-                      const Icon = method.icon;
-                      return (
-                        <SelectItem key={method.value} value={method.value}>
+                    {paymentMethodsFromSettings
+                      .filter(method => method.active)
+                      .map((method) => (
+                        <SelectItem key={method.id} value={method.id}>
                           <div className="flex items-center gap-2">
-                            <Icon className="h-4 w-4" />
-                            {method.label}
+                            <CreditCard className="h-4 w-4" />
+                            <div className="flex flex-col">
+                              <span>{method.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {method.feeType === "percent" 
+                                  ? `${method.feeValue}%`
+                                  : method.feeValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                                }
+                              </span>
+                            </div>
                           </div>
                         </SelectItem>
-                      );
-                    })}
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
