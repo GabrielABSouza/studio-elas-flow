@@ -1,7 +1,7 @@
 export type ISODate = string; // '2025-09-02' (local)
 export type ISODateTime = string; // '2025-09-02T14:30:00-03:00'
 
-export type AppointmentStatus = 'scheduled' | 'in_service' | 'completed' | 'no_show' | 'canceled';
+export type AppointmentStatus = 'to_confirm' | 'confirmed' | 'completed' | 'canceled';
 export type PaymentMethod = 'cash' | 'pix' | 'credit_card' | 'debit_card' | 'mixed';
 export type PaymentStatus = 'pending' | 'paid' | 'partially_paid' | 'refunded';
 

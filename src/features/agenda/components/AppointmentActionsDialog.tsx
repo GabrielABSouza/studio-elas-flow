@@ -6,7 +6,6 @@ import { CalendarClock, CheckCircle, XCircle, Plus } from "lucide-react";
 import { Appointment } from "../types";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { NewAppointmentDialog } from "./NewAppointmentDialog";
 import { POSDrawer } from "./POSDrawer";
 import { ConfirmCancelDialog } from "./ConfirmCancelDialog";
 import { CustomerUpdatePrompt } from "./CustomerUpdatePrompt";
@@ -26,6 +25,7 @@ interface AppointmentActionsDialogProps {
   professional?: { id: string; name: string };
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onReschedule?: (appointment: Appointment) => void;
 }
 
 export function AppointmentActionsDialog({
@@ -33,8 +33,8 @@ export function AppointmentActionsDialog({
   professional,
   open,
   onOpenChange,
+  onReschedule,
 }: AppointmentActionsDialogProps) {
-  const [rescheduleOpen, setRescheduleOpen] = React.useState(false);
   const [posOpen, setPosOpen] = React.useState(false);
   const [cancelOpen, setCancelOpen] = React.useState(false);
   const [customerUpdateOpen, setCustomerUpdateOpen] = React.useState(false);
@@ -73,8 +73,14 @@ export function AppointmentActionsDialog({
     // Não fechar o dialog principal - deixar aberto até POS ser concluído
   };
 
-  const handleReschedule = () => {
-    setRescheduleOpen(true);
+  const handleReschedule = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    if (import.meta.env.DEV) {
+      console.debug('[reagendar] clicked', appointment.id);
+      console.debug('[reagendar] opening dialog with', appointment);
+    }
+    onReschedule?.(appointment);
     onOpenChange(false);
   };
 
@@ -101,7 +107,7 @@ export function AppointmentActionsDialog({
   };
 
   const handleCreateNew = () => {
-    setRescheduleOpen(true);
+    onReschedule?.(appointment);
     onOpenChange(false);
   };
 
@@ -232,16 +238,6 @@ export function AppointmentActionsDialog({
       </Dialog>
 
       {/* Sub-dialogs */}
-      <NewAppointmentDialog
-        open={rescheduleOpen}
-        onOpenChange={setRescheduleOpen}
-        mode={appointment.status === "completed" || appointment.status === "canceled" ? "create" : "edit"}
-        appointmentId={appointment.status === "completed" || appointment.status === "canceled" ? undefined : appointment.id}
-        defaultClient={appointment.customer}
-        defaultProfessionalId={appointment.professionalId}
-        defaultStartISO={appointment.status === "completed" || appointment.status === "canceled" ? undefined : appointment.startsAt}
-        onCreated={() => setRescheduleOpen(false)}
-      />
 
       <POSDrawer
         appointment={appointment}

@@ -1,0 +1,350 @@
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { PageHeader } from '@/components/ui/page-header';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CalendarPopover } from '@/components/common/CalendarPopover';
+import { Download, Star, StarOff, TrendingUp, TrendingDown, DollarSign, Users, Target } from 'lucide-react';
+import { ReportDrawer } from '@/features/reports/components/ReportDrawer';
+import { FavoritesHub } from '@/features/reports/components/FavoritesHub';
+import { useFavorites, type ReportType } from '@/features/reports/hooks/useFavorites';
+import { formatLocalDate } from '@/features/agenda/utils';
+
+type PeriodPreset = 'today' | '7d' | '30d' | 'custom';
+type ReportStatus = 'to_confirm' | 'confirmed' | 'completed';
+
+interface ReportFilters {
+  from: Date;
+  to: Date;
+  status: ReportStatus[];
+  professionalId?: string;
+}
+
+interface ReportCard {
+  id: ReportType;
+  title: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+  value: string;
+  change?: { value: number; trend: 'up' | 'down' };
+  badge?: { text: string; variant: 'default' | 'secondary' };
+  miniChart?: React.ReactNode;
+}
+
+export default function Reports() {
+  // return <div data-probe="reports">reports-probe - testando seções</div>;
+  
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [period, setPeriod] = useState<PeriodPreset>('30d');
+  const [customFromDate, setCustomFromDate] = useState<Date>(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
+  const [customToDate, setCustomToDate] = useState<Date>(new Date());
+  const [selectedStatuses, setSelectedStatuses] = useState<ReportStatus[]>(['to_confirm', 'confirmed', 'completed']);
+  const [selectedProfessional, setSelectedProfessional] = useState<string>('');
+  const [openDrawer, setOpenDrawer] = useState<ReportType | null>(null);
+  
+  const { isFavorited, toggleFavorite } = useFavorites();
+
+  const filters: ReportFilters = {
+    from: period === 'custom' ? customFromDate : new Date(Date.now() - (period === 'today' ? 1 : period === '7d' ? 7 : 30) * 24 * 60 * 60 * 1000),
+    to: period === 'custom' ? customToDate : new Date(),
+    status: selectedStatuses,
+    professionalId: selectedProfessional || undefined,
+  };
+
+  // Mock data - replace with real API calls
+  const reportCards: ReportCard[] = [
+    {
+      id: 'revenue.total',
+      title: 'Faturamento Total',
+      description: 'Receita total do período',
+      icon: DollarSign,
+      value: 'R$ 45.280',
+      change: { value: 12.5, trend: 'up' },
+      miniChart: <div className="h-8 w-16 bg-gradient-to-r from-primary/10 to-primary/30 rounded" />,
+    },
+    {
+      id: 'revenue.byMethod',
+      title: 'Faturamento por Modalidade',
+      description: 'Distribuição por forma de pagamento',
+      icon: Target,
+      value: 'PIX: 65%',
+      miniChart: <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-primary/60" />,
+    },
+    {
+      id: 'revenue.byPro',
+      title: 'Faturamento por Profissional',
+      description: 'Top 3 profissionais',
+      icon: Users,
+      value: 'Ana: R$ 15.2K',
+      miniChart: <div className="space-y-1">
+        <div className="h-1 w-12 bg-primary rounded" />
+        <div className="h-1 w-8 bg-primary/70 rounded" />
+        <div className="h-1 w-6 bg-primary/40 rounded" />
+      </div>,
+    },
+    {
+      id: 'commission.total',
+      title: 'Comissão Total',
+      description: 'Comissões pagas',
+      icon: DollarSign,
+      value: 'R$ 6.742',
+      badge: { text: 'realizado', variant: 'secondary' },
+      change: { value: -2.1, trend: 'down' },
+    },
+    {
+      id: 'commission.byPro',
+      title: 'Comissão por Profissional',
+      description: 'Top 3 comissões',
+      icon: Users,
+      value: 'Ana: R$ 2.28K',
+      badge: { text: 'realizado', variant: 'secondary' },
+      miniChart: <div className="space-y-1">
+        <div className="h-1 w-10 bg-secondary rounded" />
+        <div className="h-1 w-7 bg-secondary/70 rounded" />
+        <div className="h-1 w-5 bg-secondary/40 rounded" />
+      </div>,
+    },
+    {
+      id: 'commission.forecast',
+      title: 'Projeção - Próxima Semana',
+      description: 'Comissão projetada',
+      icon: TrendingUp,
+      value: 'R$ 3.420',
+      change: { value: 8.7, trend: 'up' },
+      miniChart: <div className="flex items-end space-x-px h-8">
+        {Array.from({ length: 7 }).map((_, i) => (
+          <div key={i} className={`w-2 bg-primary/60 rounded-t`} style={{ height: `${20 + Math.random() * 12}px` }} />
+        ))}
+      </div>,
+    },
+  ];
+
+  const handlePeriodChange = (newPeriod: PeriodPreset) => {
+    setPeriod(newPeriod);
+    // Update URL params
+    const params = new URLSearchParams(searchParams);
+    params.set('period', newPeriod);
+    if (newPeriod !== 'custom') {
+      params.delete('from');
+      params.delete('to');
+    }
+    setSearchParams(params);
+  };
+
+  const handleCustomDateChange = (type: 'from' | 'to', date: Date) => {
+    if (type === 'from') {
+      setCustomFromDate(date);
+    } else {
+      setCustomToDate(date);
+    }
+    
+    // Update URL params
+    const params = new URLSearchParams(searchParams);
+    params.set('period', 'custom');
+    params.set(type, formatLocalDate(date));
+    setSearchParams(params);
+  };
+
+  const toggleStatus = (status: ReportStatus) => {
+    const newStatuses = selectedStatuses.includes(status)
+      ? selectedStatuses.filter(s => s !== status)
+      : [...selectedStatuses, status];
+    setSelectedStatuses(newStatuses);
+    
+    // Update URL params
+    const params = new URLSearchParams(searchParams);
+    params.set('status', newStatuses.join(','));
+    setSearchParams(params);
+  };
+
+  const handleToggleFavorite = (reportType: ReportType, e: React.MouseEvent) => {
+    e.stopPropagation();
+    toggleFavorite(reportType, filters);
+  };
+
+  // Initialize from URL params
+  useEffect(() => {
+    const urlPeriod = searchParams.get('period') as PeriodPreset;
+    const urlStatus = searchParams.get('status');
+    const urlFrom = searchParams.get('from');
+    const urlTo = searchParams.get('to');
+    const urlReport = searchParams.get('report') as ReportType;
+
+    if (urlPeriod) setPeriod(urlPeriod);
+    if (urlStatus) setSelectedStatuses(urlStatus.split(',') as ReportStatus[]);
+    if (urlFrom && urlTo) {
+      setCustomFromDate(new Date(urlFrom));
+      setCustomToDate(new Date(urlTo));
+    }
+    if (urlReport) setOpenDrawer(urlReport);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-gradient-background">
+      <PageHeader
+        title="Relatórios"
+        description="Acompanhe indicadores e exporte relatórios detalhados"
+      >
+        <Button variant="outline" disabled className="gap-2">
+          <Download className="h-4 w-4" />
+          Exportar
+        </Button>
+      </PageHeader>
+      <div>Teste: PageHeader funcionando</div>
+    </div>
+  );
+}
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap items-center gap-4">
+              {/* Período */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Período:</span>
+                <Select value={period} onValueChange={handlePeriodChange}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="today">Hoje</SelectItem>
+                    <SelectItem value="7d">7 dias</SelectItem>
+                    <SelectItem value="30d">30 dias</SelectItem>
+                    <SelectItem value="custom">Personalizado</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                {period === 'custom' && (
+                  <div className="flex items-center gap-2">
+                    <CalendarPopover
+                      date={customFromDate}
+                      onChange={(date) => handleCustomDateChange('from', date)}
+                      triggerClassName="w-36"
+                    />
+                    <span className="text-muted-foreground">até</span>
+                    <CalendarPopover
+                      date={customToDate}
+                      onChange={(date) => handleCustomDateChange('to', date)}
+                      triggerClassName="w-36"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Status */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Status:</span>
+                <div className="flex gap-2">
+                  {[
+                    { key: 'to_confirm' as ReportStatus, label: 'A confirmar' },
+                    { key: 'confirmed' as ReportStatus, label: 'Confirmado' },
+                    { key: 'completed' as ReportStatus, label: 'Concluído' },
+                  ].map(({ key, label }) => (
+                    <Badge
+                      key={key}
+                      variant={selectedStatuses.includes(key) ? 'default' : 'outline'}
+                      className="cursor-pointer hover:bg-primary/90"
+                      onClick={() => toggleStatus(key)}
+                    >
+                      {label}
+                    </Badge>
+                  ))}
+                  <Badge variant="outline" className="opacity-50 cursor-not-allowed">
+                    Cancelado
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Hub de Favoritos */}
+        <FavoritesHub filters={filters} onOpenReport={setOpenDrawer} />
+
+        {/* Dashboard de KPIs */}
+        <div>
+          <h2 className="text-xl font-semibold mb-6">Dashboard</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {reportCards.map((card) => {
+              const Icon = card.icon;
+              return (
+                <Card
+                  key={card.id}
+                  className="border-primary/10 shadow-sm cursor-pointer transition-all duration-200 hover:shadow-md hover:scale-[1.02] focus-within:ring-2 focus-within:ring-primary/20"
+                  onClick={() => setOpenDrawer(card.id)}
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === 'Enter' && setOpenDrawer(card.id)}
+                >
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => handleToggleFavorite(card.id, e)}
+                        aria-pressed={isFavorited(card.id)}
+                      >
+                        {isFavorited(card.id) ? (
+                          <Star className="h-3 w-3 fill-current text-yellow-500" />
+                        ) : (
+                          <StarOff className="h-3 w-3" />
+                        )}
+                        <span className="sr-only">
+                          {isFavorited(card.id) ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+                        </span>
+                      </Button>
+                      <Icon className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl font-bold">{card.value}</span>
+                          {card.badge && (
+                            <Badge variant={card.badge.variant} className="text-xs">
+                              {card.badge.text}
+                            </Badge>
+                          )}
+                        </div>
+                        {card.change && (
+                          <div className={`flex items-center gap-1 mt-1 text-xs ${
+                            card.change.trend === 'up' ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {card.change.trend === 'up' ? (
+                              <TrendingUp className="h-3 w-3" />
+                            ) : (
+                              <TrendingDown className="h-3 w-3" />
+                            )}
+                            {Math.abs(card.change.value)}%
+                          </div>
+                        )}
+                      </div>
+                      {card.miniChart && (
+                        <div className="flex items-center">
+                          {card.miniChart}
+                        </div>
+                      )}
+                    </div>
+                    <CardDescription className="mt-2">{card.description}</CardDescription>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Report Drawer */}
+      {openDrawer && (
+        <ReportDrawer
+          reportType={openDrawer}
+          filters={filters}
+          onClose={() => setOpenDrawer(null)}
+        />
+      )}
+    </div>
+  );
+}

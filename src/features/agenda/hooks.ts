@@ -1,6 +1,19 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchProfessionals, fetchAppointments, completeAppointment } from './api';
-import { ISODate, Professional, Appointment, ProcedureCatalog } from './types';
+import { 
+  fetchProfessionals, 
+  fetchAppointments, 
+  completeAppointment,
+  fetchProcedures,
+  searchClients,
+  createAppointment,
+  getAppointment,
+  confirmAppointment,
+  cancelAppointment,
+  updateAppointment,
+  type Client,
+  type Procedure
+} from './api';
+import { ISODate, Professional, Appointment } from './types';
 import { shiftDays, getWeekStart, getMonthStart } from './utils';
 
 // Query keys estáveis
@@ -8,6 +21,8 @@ export const agendaKeys = {
   all: ['agenda'] as const,
   professionals: () => [...agendaKeys.all, 'professionals'] as const,
   procedures: () => [...agendaKeys.all, 'procedures'] as const,
+  clients: (query: string) => [...agendaKeys.all, 'clients', query] as const,
+  appointments: (id: string) => [...agendaKeys.all, 'appointments', id] as const,
   day: (date: ISODate) => [...agendaKeys.all, 'day', date] as const,
   week: (weekStart: ISODate) => [...agendaKeys.all, 'week', weekStart] as const,
   month: (monthStart: ISODate) => [...agendaKeys.all, 'month', monthStart] as const,
@@ -99,35 +114,43 @@ export function useAgendaMonth(date: ISODate) {
   };
 }
 
-// Hooks para catálogos
+// Hooks para catálogos e busca de clientes
 export function useProceduresCatalog() {
   return useQuery({
     queryKey: agendaKeys.procedures(),
-    queryFn: async (): Promise<ProcedureCatalog[]> => {
-      // Mock data - adapte para sua API
-      return [
-        { id: '1', name: 'Limpeza de Pele', defaultPrice: 80.00 },
-        { id: '2', name: 'Hidratação Facial', defaultPrice: 60.00 },
-        { id: '3', name: 'Design de Sobrancelhas', defaultPrice: 35.00 },
-        { id: '4', name: 'Extensão de Cílios', defaultPrice: 120.00 },
-        { id: '5', name: 'Microagulhamento', defaultPrice: 150.00 },
-        { id: '6', name: 'Peeling Químico', defaultPrice: 100.00 },
-        { id: '7', name: 'Drenagem Linfática', defaultPrice: 90.00 },
-        { id: '8', name: 'Radiofrequência', defaultPrice: 110.00 },
-      ];
-    },
+    queryFn: fetchProcedures,
     staleTime: 10 * 60 * 1000, // 10 minutos
   });
 }
 
 export function useProfessionalsCatalog() {
-  // Reutiliza o hook existente, mas retorna apenas id e name
   const { data: professionals = [], ...rest } = useProfessionals();
   
   return {
     data: professionals.map(p => ({ id: p.id, name: p.name })),
     ...rest,
   };
+}
+
+export function useClientsSearch(query: string) {
+  return useQuery({
+    queryKey: agendaKeys.clients(query),
+    queryFn: () => searchClients(query),
+    enabled: query.trim().length > 1,
+    staleTime: 30 * 1000, // 30 segundos
+  });
+}
+
+export function useCreateAppointment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createAppointment,
+    onSuccess: () => {
+      // Invalidar todos os caches de agendamentos
+      queryClient.invalidateQueries({ queryKey: agendaKeys.all });
+    },
+  });
 }
 
 export function useCompleteAppointment() {
@@ -144,6 +167,67 @@ export function useCompleteAppointment() {
     }) => completeAppointment(appointmentId, data),
     onSuccess: () => {
       // Invalidar caches relacionados
+      queryClient.invalidateQueries({ queryKey: agendaKeys.all });
+    },
+  });
+}
+
+export function useAppointment(appointmentId?: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: agendaKeys.appointments(appointmentId || ''),
+    queryFn: () => getAppointment(appointmentId!),
+    enabled: !!appointmentId && (options?.enabled !== false),
+    staleTime: 30 * 1000, // 30 segundos
+  });
+}
+
+export function useConfirmAppointment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: confirmAppointment,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: agendaKeys.all });
+    },
+  });
+}
+
+export function useCancelAppointment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ appointmentId, ...data }: {
+      appointmentId: string;
+      reason: string;
+      notes?: string;
+      notifyClient?: boolean;
+      notifyProfessional?: boolean;
+    }) => cancelAppointment(appointmentId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: agendaKeys.all });
+    },
+  });
+}
+
+export function useUpdateAppointment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ appointmentId, ...data }: {
+      appointmentId: string;
+      clientId?: string;
+      clientName: string;
+      clientPhone?: string;
+      professionalId: string;
+      startISO: string;
+      endISO: string;
+      items: Array<{
+        procedureId: string;
+        professionalId: string;
+        qty: number;
+      }>;
+    }) => updateAppointment(appointmentId, data),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: agendaKeys.all });
     },
   });

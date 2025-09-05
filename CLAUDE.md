@@ -1,297 +1,452 @@
-# CLAUDE.md — Guia do Agente para o Front‑end (Vite + React + TS + Tailwind)
+CLAUDE.md — Guia do Agente para o Front-end (Vite + React + TS + Tailwind)
 
-> **Objetivo**: orientar o agente (ex.: Claude Code) a implementar e refatorar o front‑end seguindo boas práticas, **sem alterar componentes da UI sem solicitação explícita**, mantendo o código limpo, consistente e seguro.
+Objetivo: orientar o agente a implementar e refatorar o front-end seguindo boas práticas, sem alterar componentes da UI sem solicitação explícita, mantendo o código limpo, consistente e seguro.
 
----
+1) Princípios operacionais (regras invioláveis)
 
-## 1) Princípios operacionais (regras invioláveis)
+NUNCA CRIE UM NOVO SERVIDOR A NÃO SER QUE EXPLICITAMENTE SOLICITADO
 
-1. **Não alterar a UI sem pedido explícito**
+Não alterar a UI sem pedido explícito
+Não mudar layout, hierarquia visual, textos, ícones, espaçamentos ou cores.
+Se uma mudança visual for necessária para corrigir bug, escalar com comentário TODO explicando o motivo e propondo alternativa mínima.
 
-   * Não mudar layout, hierarquia visual, textos, ícones, espaçamentos ou cores.
-   * Se uma mudança visual for **necessária** para corrigir bug, **escalar** com comentário TODO explicando o motivo e propondo alternativa mínima.
-2. **Não introduzir dependências novas** sem instrução explícita.
-3. **Escopo mínimo e atômico**
+Não introduzir dependências novas sem instrução explícita.
 
-   * Cada mudança deve ter objetivo claro e pequeno (1 PR/commit por assunto).
-4. **Compatibilidade e reversibilidade**
+Escopo mínimo e atômico
+Commits/PRs pequenos, 1 assunto por vez.
 
-   * Preserve APIs de componentes existentes; quando necessário, introduza **props opcionais** em vez de quebrar contratos.
-5. **Padronização antes de criatividade**
+Compatibilidade e reversibilidade
+Preserve contratos; quando necessário, crie props opcionais.
 
-   * Use os padrões definidos neste documento; evite soluções ad‑hoc.
-6. **Segurança e privacidade**
+Padronização antes de criatividade
+Siga os padrões deste documento.
 
-   * Nunca comitar segredos/tokens. Use `import.meta.env` e `.env*`.
-7. **Acessibilidade** primeiro
+Segurança e privacidade
+Nada de segredos no repositório. Use import.meta.env.
 
-   * Respeite ARIA roles, foco, contraste e navegação por teclado.
+Acessibilidade primeiro
+ARIA, foco visível, navegação por teclado.
 
----
-
-## 2) Arquitetura de pastas (sugerida)
-
-```
+2) Arquitetura de pastas (sugerida)
 src/
   app/                  # provedores de alto nível, tema, query, roteamento
-  routes/               # rotas (React Router), 1 arquivo/página ou pasta por feature
+  routes/               # rotas (React Router)
   components/
-    ui/                 # componentes shadcn/ui gerados — NÃO editar sem pedido
-    common/             # wrappers e componentes compartilhados da aplicação
-  features/             # fatias de domínio (ex.: customers, appointments, services)
+    ui/                 # shadcn/ui — NÃO editar sem pedido
+    common/             # wrappers compartilhados
+  features/
     <feature>/
       pages/            # telas
-      components/       # componentes específicos da feature
-      api.ts            # chamadas HTTP (sem lógica de domínio pesada)
-      hooks.ts          # hooks React Query p/ esta feature
-      schemas.ts        # zod schemas/tipos desta feature
-  lib/                  # utilitários (api client, cn, formatters, constants)
-  styles/               # index.css, tokens, resets
-  assets/               # imagens, ícones estáticos
-```
+      components/       # componentes da feature
+      api.ts            # chamadas HTTP
+      hooks.ts          # React Query hooks da feature
+      schemas.ts        # zod schemas/tipos
+  lib/                  # api client, formatters, utils
+  styles/               # css base/tokens
+  assets/               # imagens/ícones
 
-**Alias**: `@ → ./src` em todos os imports internos.
 
----
+Alias: @ → ./src.
 
-## 3) Stack e convenções
+3) Stack e convenções
 
-* **Build**: Vite + React + TypeScript.
-* **Estilos**: Tailwind CSS (`darkMode: "class"`), tokens via CSS vars.
-* **UI kit**: shadcn/ui + Radix primitives. **Não editar arquivos de `components/ui`**; crie wrappers em `components/common`.
-* **Roteamento**: React Router v6; use lazy + Suspense para code‑split.
-* **Dados**: TanStack React Query v5 (cache, invalidação, estados de loading/erro).
-* **Formulários**: react‑hook‑form + zod.
-* **Tema**: next‑themes (atributo `class`).
-* **Toasts**: sonner (mensagens curtas e não bloqueantes).
+Vite + React + TS
 
----
+Tailwind (tokens via CSS vars, darkMode:"class")
 
-## 4) Tailwind — diretrizes
+shadcn/ui + Radix
 
-1. **Tokens primeiro**: priorize classes utilitárias e variáveis de tema (ex.: `bg-background`, `text-foreground`).
-2. **Sem CSS global** (exceto reset/base); estilos específicos devem ficar como classes utilitárias ou em wrappers.
-3. **Classes legíveis**: mantenha ordem aproximada: layout → box → tipografia → cor → estados (hover/focus) → dark.
-4. **Evitar `!important`**; prefira composição de classes.
-5. **Responsivo**: use prefixos (`sm: md: lg:`) em vez de media queries manuais.
+React Router v6 (lazy + Suspense)
 
-**Exemplo**
+React Query v5
 
-```tsx
-<button className="inline-flex items-center justify-center rounded-md border px-3 py-2 text-sm
-                 bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:outline-none
-                 focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
-  Salvar
-</button>
-```
+react-hook-form + zod
 
----
+sonner para toasts
 
-## 5) Padrões de componentes React
+next-themes para tema
 
-* **Funcionais + TS**; tipar props com interfaces.
-* **Pureza**: componentes puros; derive dados via props/hooks; evitar estado global implícito.
-* **Memorização criteriosa**: `React.memo`, `useCallback`, `useMemo` apenas quando houver ganho comprovado.
-* **Acessibilidade**: usar Radix/shadcn para controle de foco, ARIA e teclado.
-* **Sem side‑effects em render**: operações async em effects, com abort/cancel.
-* **Sem alteração estrutural de componentes existentes** (markup/props) sem pedido explícito; para novas necessidades, adicionar **props opcionais não disruptivas**.
+4) Tailwind — diretrizes
 
----
+Use tokens (bg-card, text-muted-foreground, border) — sem hex fixo.
 
-## 6) Dados e React Query
+Evite CSS global (salvo base/reset).
 
-* **Query keys estáveis** por recurso: `['customers']`, `['customers', id]`.
-* **Estados obrigatórios**: loading, error, empty, success.
-* **Invalidate com parcimônia**: prefira `setQueryData` quando possível.
-* **Stale time**: definir por recurso; padrão conservador (ex.: 30–60s) quando não especificado.
-* **Mutations**: usar otimista somente com instrução explícita; caso contrário, confirmar pelo servidor.
-* **Erros**: normalizar mensagem e exibir via toast + fallback UI (nunca silencioso).
+Ordem de classes: layout → box → tipografia → cor → estados → dark.
 
-**Exemplo**
+Sem !important.
 
-```ts
-const q = useQuery({ queryKey: ['customers'], queryFn: fetchCustomers });
-if (q.isLoading) return <SkeletonList/>;  
-if (q.isError) return <ErrorState message={toMessage(q.error)}/>;
-```
+Responsivo com sm/md/lg.
 
----
+5) Padrões de componentes React
 
-## 7) Formulários (react‑hook‑form + zod)
+Funcionais + TS; sem side-effects em render.
 
-* **Schema zod** no arquivo da feature ou em `schemas.ts`.
-* **Resolver**: `zodResolver(schema)`.
-* **A11y**: `aria-invalid`, `aria-describedby` e mensagens de erro associadas.
-* **Submit**: estados de `isSubmitting` e botão desabilitado.
+memo/useMemo/useCallback com parcimônia.
 
-**Exemplo**
+Acessibilidade via Radix/shadcn.
 
-```tsx
-const form = useForm<Inputs>({ resolver: zodResolver(FormSchema) });
-<form onSubmit={form.handleSubmit(onSubmit)}>
-  <Input {...form.register('name')} aria-invalid={!!form.formState.errors.name} />
-  {form.formState.errors.name && <p role="alert">{form.formState.errors.name.message}</p>}
-</form>
-```
+Não quebre contratos existentes.
 
----
+6) Dados e React Query
 
-## 8) Roteamento
+Keys estáveis por recurso.
 
-* Criar novas páginas em `routes/` **ou** em `features/<feature>/pages` e exportar rota.
-* Usar `React.lazy` + `<Suspense fallback={<SkeletonPage/>}>`.
-* **Não alterar a ordem/hierarquia de rotas existentes** sem pedido explícito.
+Trate loading/error/empty/success.
 
-**Exemplo**
+Prefira setQueryData a invalidar tudo.
 
-```tsx
-const ClientesPage = React.lazy(() => import('@/features/customers/pages/clientes'));
-<Route path="/clientes" element={<Suspense fallback={<SkeletonPage/>}><ClientesPage/></Suspense>} />
-```
+Stale time por recurso (padrão 30–60s).
 
----
+Mutations otimistas só com instrução explícita.
 
-## 9) Erros, toasts e carregamento
+7) Formulários (RHF + zod)
 
-* **Carregamento**: usar skeletons/placeholders consistentes.
-* **Toasts**: `sonner` para confirmações rápidas; mensagens curtas, sem stack traces.
-* **Fallback**: telas de erro amigáveis com ação para retry.
+Schema em schemas.ts da feature.
 
----
+zodResolver, aria-invalid, mensagens associadas.
 
-## 10) Theming e dark mode
+Botões desabilitados durante submit.
 
-* Controlado por `next-themes` com `attribute="class"`.
-* Usar tokens `bg-background`, `text-foreground` etc.; **não** hardcode cores hex.
-* Testar estados `light`, `dark` e `system` ao introduzir novos componentes.
+8) Roteamento
 
----
+Novas telas em routes/ ou features/<feature>/pages.
 
-## 11) Acessibilidade (A11y)
+React.lazy + <Suspense fallback={<SkeletonPage/>}>.
 
-* Garantir foco visível e ordem de tabulação.
-* Usar componentes Radix/shadcn quando houver equivalente.
-* Fornecer `aria-label`/`aria-labelledby` conforme necessário.
+Não mude hierarquia de rotas sem pedido.
 
----
+9) Erros, toasts e carregamento
 
-## 12) Cliente HTTP (fio de conexão)
+Skeletons/placeholder consistentes.
 
-* Centralizar chamadas em arquivos `api.ts` por feature, usando um **client fino** (`lib/api.ts`).
-* **Sem lógica de domínio** na camada HTTP; apenas requests, parsing/validação e erros.
-* `VITE_API_URL` via `.env`; **não** embutir URLs.
+Toasts curtos; sem stack traces.
 
-**Exemplo**
+Fallback amigável com retry.
 
-```ts
-// features/customers/api.ts
-export async function fetchCustomers() {
-  return api.get<Customer[]>('/customers');
-}
-```
+10) Theming e dark mode
 
----
+next-themes, attribute="class".
 
-## 13) Testes (quando habilitados)
+Use tokens; teste light/dark/system.
 
-* Preferir **Testing Library** + **Vitest**.
-* Testes de unidade para hooks e utils; testes de integração para páginas críticas.
-* Evitar snapshots frágeis de markup (preferir queries por papel/label).
+11) Acessibilidade (A11y)
 
----
+Foco visível e ordem de tabulação.
 
-## 14) Padrões de código e qualidade
+aria-label/aria-labelledby corretos.
 
-* **Lint**: não desabilitar regras sem justificativa em comentário.
-* **Prettier**: manter formatação padrão do projeto.
-* **Tipos**: evitar `any`; usar `unknown` + narrows ou zod.
-* **Logs**: `console.log` apenas em DEV e removidos antes do merge.
+Componentes Radix/shadcn sempre que houver.
 
----
+12) Cliente HTTP (fio de conexão)
 
-## 15) Segurança
+Centralize em features/<feature>/api.ts e lib/api.ts.
 
-* Nunca expor chaves ou segredos.
-* Sanitizar e validar dados de entrada/saída (zod onde couber).
-* Evitar `dangerouslySetInnerHTML`; se inevitável, documentar e higienizar.
+Sem lógica de domínio no client.
 
----
+Base URL via VITE_API_URL.
 
-## 16) Performance
+13) Testes (se habilitados)
 
-* Code‑split por rota/feature; imagens otimizadas; evitar re‑renders (keys estáveis, props imutáveis).
-* Tabelas/listas grandes: considerar virtualização **apenas sob instrução explícita**.
-* Evitar cálculos pesados em render; use memoização quando necessário.
+Testing Library + Vitest.
 
----
+Unit para hooks/utils; integração para telas críticas.
 
-## 17) Fluxo de trabalho do agente
+14) Padrões de código e qualidade
 
-1. **Ler a tarefa** e identificar o **escopo mínimo**.
-2. **Listar arquivos** que serão alterados.
-3. **Planificar a mudança** (em comentário no topo do PR/commit): objetivo, impacto e rollback.
-4. **Executar** seguindo este Cloud.md.
-5. **Auto‑revisão** com checklist (abaixo).
-6. **Gerar diff claro** e mensagem de commit descritiva.
+Lint sem desativar regras sem justificativa.
 
----
+Prettier padrão.
 
-## 18) Checklist antes do commit
+Evite any.
 
-* [ ] UI não foi alterada (ou há pedido explícito + justificativa).
-* [ ] Sem novas dependências.
-* [ ] Imports usam `@/` e caminhos relativos curtos.
-* [ ] Estados de loading/erro contemplados.
-* [ ] Acessibilidade básica verificada.
-* [ ] Tipos corretos; sem `any` desnecessário.
-* [ ] Variáveis de ambiente via `import.meta.env`.
-* [ ] Lint/Build passam localmente.
+Sem logs em PR final.
 
----
+15) Segurança
 
-## 19) Mensagens de commit (padrão sugerido)
+Não expor segredos.
 
-```
-feat(customers): add form validation with zod
-fix(appointments): handle empty state when no slots
-refactor(ui): extract ButtonWrapper to components/common
-chore(lint): enable eslint rule for hooks exhaustive-deps
-```
+Validar/sanitizar dados (zod).
 
----
+Evitar dangerouslySetInnerHTML.
 
-## 20) Quando pedir confirmação ao humano
+16) Performance
 
-* Alterações visuais/UX, inclusive spacing, tipografia, cores e ordem de elementos.
-* Remoção de componentes, props ou rotas.
-* Introdução de dependências, mudanças de build, ou reestruturação de pastas.
-* Comportamentos de dados que impliquem perda/alteração de estado persistido.
+Code-split por rota.
 
----
+Evitar re-renders (keys/props estáveis).
 
-## 21) Exemplos de tarefas típicas
+Virtualização só quando solicitado.
 
-**Criar nova página**
+17) Fluxo de trabalho do agente
 
-1. Criar `features/<feature>/pages/<Page>.tsx`.
-2. Exportar rota em `routes` e usar `React.lazy` + `Suspense`.
-3. Garantir skeleton e empty state.
+Ler tarefa e definir escopo mínimo.
 
-**Adicionar chamada HTTP**
+Listar arquivos afetados.
 
-1. Implementar em `features/<feature>/api.ts` usando `lib/api`.
-2. Criar hook em `features/<feature>/hooks.ts`.
-3. Consumir na página; tratar loading/erro; exibir toast em sucesso/erro.
+Planificar mudança (objetivo/impacto/rollback).
 
-**Refinar formulário**
+Executar seguindo este guia.
 
-1. Definir schema zod.
-2. `react-hook-form` com `zodResolver`.
-3. Mensagens de erro acessíveis e botão desabilitado em submit.
+Auto-revisão com checklist.
 
----
+PR com diff claro e mensagem descritiva.
 
-## 22) Observações finais
+18) Checklist antes do commit
 
-* Este documento **precede** preferências do agente; em caso de conflito, **seguir o CLAUDE.md**.
-* Em ambiguidade, **não alterar UI** e solicitar esclarecimento com proposta mínima de implementação.
+ UI não alterada sem pedido explícito.
+
+ Sem novas dependências.
+
+ Imports com @/.
+
+ Loading/erro tratados.
+
+ A11y ok.
+
+ Tipos corretos.
+
+ Vars via import.meta.env.
+
+ Lint/Build ok.
+
+19) Mensagens de commit (exemplos)
+feat(reports): add revenue by method drawer
+fix(calendar): align popover style with agenda
+refactor(pos): extract EditIconButton to common
+chore(ci): run lint on changed packages
+
+20) Quando pedir confirmação ao humano
+
+Qualquer mudança de UX/visual.
+
+Remover componentes/props/rotas.
+
+Novas dependências/build.
+
+Comportamentos com impactos em dados persistidos.
+
+21) Exemplos de tarefas típicas
+
+(iguais aos teus)
+
+22) Observações finais
+
+Este documento precede preferências do agente. Em ambiguidade, não alterar UI e solicitar esclarecimento com proposta mínima.
+
+SEÇÕES DE PRODUTO (GUARD-RAILS)
+23) Agenda — Dia/Semana/Mês (NÃO alterar sem pedido)
+
+Dia
+
+Linhas = profissionais; colunas = horários.
+
+Remover rótulo “Profissional” do cabeçalho.
+
+Header sticky com border-b; células com border-t border-l.
+
+AppointmentPill obrigatório nas células com agendamento:
+
+rounded-xl border bg-card hover:bg-accent/60 hover:shadow-sm
+
+Borda por status: to_confirm (amber/50), confirmed (primary/40), completed (green/50).
+
+Dot de status dentro do card (nunca ao lado do nome do profissional).
+
+Clique abre POS.
+
+Slot vazio: botão “+” (card dashed) visível em hover/foco (desktop) e sempre no touch.
+
+Sem empty-state gráfico.
+
+Semana/Mês
+
+Exibir % de ocupação por profissional no período (barras/badges).
+
+Mesma estética do calendário/Popover da Agenda.
+
+Ações globais: botão “Novo agendamento” isolado no topo; controles (data/visão) abaixo do título/CTA.
+
+Status incluídos no produto: to_confirm (A confirmar), confirmed (Confirmado), completed (Executado). canceled excluído por padrão.
+
+24) POS — Finalizar atendimento
+
+Valores padrão (procedimentos, preços, % comissão) vêm do cadastro e ficam somente-leitura.
+
+Edição apenas via ícones de lápis (toggles):
+
+“Editar itens” (nome/preço/qty; por padrão só qty).
+
+“Editar valor final” (exclusivo com desconto).
+
+“Editar % comissão”.
+
+Layout 2 colunas, modal largo (~920–1040px).
+
+Comissão sempre calculada sobre o total após desconto.
+
+Formas de pagamento: PIX, débito, crédito (1x/2x), dinheiro, voucher.
+
+Ao finalizar: status → completed e prompt para atualizar cadastro do cliente.
+
+25) “Novo Agendamento” (dialog único para CTA e “+” do slot)
+
+Cliente: combobox com busca de cadastrados ou nome livre (novo).
+
+Telefone sempre visível (pré-preenche se existente).
+
+Profissional: default do slot (editável).
+
+Data/Hora: mesmo CalendarPopover da Agenda + select de horários (30min).
+
+Procedimentos: linhas com select de procedimento (catálogo), select de profissional responsável (default = do agendamento), qty, adicionar/remover.
+
+Respeitar habilitações (procedimento × profissional).
+
+26) Relatórios — Dashboard + Drawers + Hub de Favoritos
+
+Hub de Favoritos no topo (cards menores).
+
+Favoritar via estrela no card e no Drawer (usar atualização otimista e mesma fonte de dados).
+
+Estrela não abre Drawer (usar stopPropagation).
+
+Dashboard de cards clicáveis (resumo do período):
+
+revenue.total (faturamento)
+
+revenue.byMethod (modalidade)
+
+revenue.byPro.top3
+
+commission.total (realizado — só completed)
+
+commission.byPro.top3
+
+commission.forecastNextWeek (projeção da próxima semana: inclui to_confirm, confirmed, completed; exclui canceled)
+
+Drawers: gráfico + tabela + filtros locais + Exportar CSV/XLS/PDF + Fixar + “Ver relatório completo”.
+
+Regra de status
+
+KPIs realizados: apenas completed.
+
+Projeções: to_confirm + confirmed + completed (peso de to_confirm configurável no back; default 1.0 se não informado).
+
+canceled fica sempre fora.
+
+27) Exportações
+
+CSV/XLS: dataset da tabela renderizada com filtros aplicados + linha de totais.
+
+PDF: layout print-friendly do relatório completo (filtros + gráfico + tabela).
+
+Períodos grandes: exportação assíncrona (não bloquear UI).
+
+28) Configurações — Procedimentos
+
+Procedure: nome, categoria, duração, cor, ativo.
+
+Preço & Comissão: preço base, % comissão default, vigência (de/até).
+
+Habilitar por profissional (overrides: preço, % comissão, duração, buffers).
+
+Matriz Profissionais×Procedimentos para manutenção rápida (habilitar/ajustes em lote).
+
+Desativar esconde de Agenda/POS (não apaga histórico).
+
+29) Configurações — Campanhas & Combos
+
+Combo (produto pacote):
+
+Itens [ { procedureId, qty } ]
+
+Preço: desconto % ou valor final (exclusivos).
+
+Profissionais habilitados (por pessoa ou função).
+
+Validade (início/fim, dias/horários) + limites (global e por cliente) + stacking flag.
+
+Status: rascunho, publicado, pausado, expirado.
+
+POS: aplicar desconto e comissão sobre valor após desconto (ratear desconto proporcional aos itens).
+
+Campanhas de desconto: escopos por categoria/procedimento/dia/modalidade; mesmas regras de validade/stacking.
+
+Redenção
+
+Tipo A: venda + consumo imediato.
+
+Tipo B (pacote de sessões): gerar créditos, controlar saldo/validade; sugerir consumo na Agenda/POS.
+
+30) RBAC — Papéis e permissões mínimas
+
+Admin: tudo.
+
+Gestor: relatórios; criar/editar procedimentos, combos/campanhas; publicar/pausar.
+
+Recepção: Agenda, criar agendamento, POS; não pode editar preço/% comissão (salvo permissão).
+
+Profissional: ver própria agenda, marcar execução, ver comissões; sem editar preços.
+
+Aplicação no front:
+
+Gates de UI (mostrar/ocultar/disable).
+
+Rotas protegidas.
+
+Nunca depender só do front; o back deve checar.
+
+31) Auditoria
+
+Log obrigatório para alterações de preço, % comissão, publicação/pausa de campanhas/combos.
+
+Registrar { who, when, field, from, to, reason? }.
+
+Em POS, ao sobrescrever preço/comissão, exigir motivo (short).
+
+32) Regras de cálculo (fonte única)
+
+Comissão = valor_após_desconto * (commissionPct/100).
+
+Desconto de valor final (combo) deve ser rateado proporcionalmente aos itens para comissão.
+
+Moeda: BRL (R$), 2 casas; arredondar no fim do item.
+
+Timezone: America/Sao_Paulo.
+
+Datas em ISO no wire; formatação só na borda de UI.
+
+33) Calendário/Date Picker — padrão único
+
+Usar o mesmo CalendarPopover em Agenda, Novo Agendamento e Relatórios (estilo idêntico).
+
+Botões “Hoje”/“Limpar”; dias com hover:bg-accent, seleção bg-primary.
+
+34) Favoritos — fonte única e comportamento
+
+Estado/Query única (['report-favorites', userId]).
+
+Toggle com atualização otimista; refletir imediatamente na faixa “Meus favoritos”.
+
+Ícone de estrela não abre o Drawer (stopPropagation).
+
+Reordenar via drag; persistir order_index.
+
+35) QA/aceitação específicos (marcar antes do merge)
+
+Agenda Dia com AppointmentPill correto; sem dots em nome do profissional; “+” nos slots.
+
+POS com toggles de lápis, comissão pós-desconto, finalize → prompt de atualização de cadastro.
+
+Novo Agendamento: combobox de cliente, telefone, selects de profissional/procedimento, mesmo calendário da Agenda.
+
+Relatórios: cards abrem Drawers; Projeção de comissão – próxima semana inclui to_confirm/confirmed/completed e exclui canceled.
+
+Favoritar sobe para “Meus favoritos” imediatamente; um X de fechar no Drawer.
+
+Configurações: CRUD de procedimentos, matriz de habilitação, combos/campanhas com validade e profissionais; RBAC aplicado (botões/rotas).
+
+Exportações geram CSV/XLS/PDF com filtros aplicados e linha de total.
+
+Importante: em qualquer dúvida não visual, aplique as regras acima. Em qualquer dúvida visual, não altere e peça confirmação com proposta mínima.

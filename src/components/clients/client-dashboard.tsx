@@ -1,7 +1,15 @@
-import { Users, UserPlus, Calendar, TrendingUp, AlertTriangle, Clock, DollarSign } from "lucide-react";
+import { useState } from "react";
+import { Users, UserPlus, Calendar, TrendingUp, AlertTriangle, Clock, DollarSign, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Client } from "@/types/client";
+import { CustomerCard } from "@/features/customers/components/CustomerCard";
+import { CustomerListDrawer } from "@/features/customers/components/CustomerListDrawer";
+import { GrowthCard } from "@/features/customers/components/GrowthCard";
+import { GrowthDrawer } from "@/features/customers/components/GrowthDrawer";
+import { Cohort } from "@/features/customers/hooks";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +22,26 @@ interface ClientDashboardProps {
 }
 
 export function ClientDashboard({ clients }: ClientDashboardProps) {
+  const [drawerState, setDrawerState] = useState<{
+    open: boolean;
+    title: string;
+    cohort: Cohort;
+    defaultRange?: { from: Date; to: Date };
+  }>({
+    open: false,
+    title: "",
+    cohort: "all"
+  });
+
+  const [growthDrawerOpen, setGrowthDrawerOpen] = useState(false);
+
+  const openDrawer = (title: string, cohort: Cohort, defaultRange?: { from: Date; to: Date }) => {
+    setDrawerState({ open: true, title, cohort, defaultRange });
+  };
+
+  const openGrowthDrawer = () => {
+    setGrowthDrawerOpen(true);
+  };
   const totalClients = clients.length;
   const newClientsThisMonth = clients.filter(client => {
     const clientDate = new Date(client.createdAt);
@@ -113,59 +141,88 @@ export function ClientDashboard({ clients }: ClientDashboardProps) {
     <div className="space-y-6">
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-primary/20 shadow-soft">
+        <Card 
+          className="border-primary/20 shadow-soft cursor-pointer hover:shadow-elegant transition-shadow"
+          onClick={() => openDrawer("Todos os Clientes", "all")}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total de Clientes</CardTitle>
             <Users className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary">{totalClients}</div>
-            <p className="text-xs text-muted-foreground">
-              Base completa de clientes
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                Base completa de clientes
+              </p>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-xs gap-1 p-1 h-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Ver lista
+                <ExternalLink className="h-3 w-3" />
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="border-primary/20 shadow-soft">
+        <Card 
+          className="border-primary/20 shadow-soft cursor-pointer hover:shadow-elegant transition-shadow"
+          onClick={() => openDrawer("Clientes Novas este Mês", "new_this_month")}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Novas este Mês</CardTitle>
             <UserPlus className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary">{newClientsThisMonth}</div>
-            <p className="text-xs text-muted-foreground">
-              {newClientsThisMonth > 0 ? `+${((newClientsThisMonth / totalClients) * 100).toFixed(1)}%` : "Sem crescimento"}
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                {newClientsThisMonth > 0 ? `+${((newClientsThisMonth / totalClients) * 100).toFixed(1)}%` : "Sem crescimento"}
+              </p>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-xs gap-1 p-1 h-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Ver lista
+                <ExternalLink className="h-3 w-3" />
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="border-primary/20 shadow-soft">
+        <Card 
+          className="border-primary/20 shadow-soft cursor-pointer hover:shadow-elegant transition-shadow"
+          onClick={() => openDrawer("Aniversariantes do Mês", "birthdays_this_month")}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Aniversários</CardTitle>
             <Calendar className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary">{clientsWithBirthdayThisMonth}</div>
-            <p className="text-xs text-muted-foreground">
-              Aniversariantes este mês
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                Aniversariantes este mês
+              </p>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-xs gap-1 p-1 h-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Ver lista
+                <ExternalLink className="h-3 w-3" />
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="border-primary/20 shadow-soft">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Crescimento</CardTitle>
-            <TrendingUp className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-primary">
-              {totalClients > 0 ? "+12%" : "0%"}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Comparado ao mês anterior
-            </p>
-          </CardContent>
-        </Card>
+        <GrowthCard onOpenDrawer={openGrowthDrawer} />
       </div>
 
       {/* Alertas Críticos */}
@@ -194,44 +251,54 @@ export function ClientDashboard({ clients }: ClientDashboardProps) {
                   }
                 };
 
+                const getCohortFromAlert = (alertType: string): Cohort => {
+                  switch (alertType) {
+                    case 'critical':
+                      return 'risk';
+                    case 'commercial':
+                      return 'high_potential';
+                    default:
+                      return 'all';
+                  }
+                };
+
                 return (
-                  <DropdownMenu key={index}>
-                    <DropdownMenuTrigger asChild>
-                      <div className={`p-4 rounded-lg border cursor-pointer ${getAlertStyles(alert.type)}`}>
-                        <div className="flex items-start gap-3">
-                          <div className="p-2 rounded-full bg-background/80">
-                            <Icon className="h-4 w-4" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between">
-                              <p className="font-semibold text-sm">{alert.title}</p>
-                              <Badge 
-                                variant="secondary" 
-                                className="text-xs font-bold"
-                              >
-                                {alert.count}
-                              </Badge>
-                            </div>
-                            <p className="text-xs mt-1 opacity-80">
-                              {alert.description}
-                            </p>
-                          </div>
+                  <div 
+                    key={index}
+                    className={`p-4 rounded-lg border cursor-pointer hover:shadow-sm transition-shadow ${getAlertStyles(alert.type)}`}
+                    onClick={() => openDrawer(alert.title, getCohortFromAlert(alert.type))}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-full bg-background/80">
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="font-semibold text-sm">{alert.title}</p>
+                          <Badge 
+                            variant="secondary" 
+                            className="text-xs font-bold"
+                          >
+                            {alert.count}
+                          </Badge>
+                        </div>
+                        <p className="text-xs mt-1 opacity-80">
+                          {alert.description}
+                        </p>
+                        <div className="mt-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-xs gap-1 p-1 h-auto opacity-70"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Ver lista
+                            <ExternalLink className="h-3 w-3" />
+                          </Button>
                         </div>
                       </div>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-64 max-h-80 overflow-y-auto">
-                      {alert.clients && alert.clients.map((client: Client) => (
-                        <DropdownMenuItem key={client.id} className="cursor-pointer">
-                          <div className="flex flex-col">
-                            <span className="font-medium">{client.name}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {client.phone || client.email || 'Sem contato'}
-                            </span>
-                          </div>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -247,28 +314,18 @@ export function ClientDashboard({ clients }: ClientDashboardProps) {
           </CardHeader>
           <CardContent>
             {recentClients.length > 0 ? (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {recentClients.map((client) => (
-                  <div key={client.id} className="flex items-center gap-3 p-3 rounded-lg bg-gradient-soft/30">
-                    <div className="h-10 w-10 rounded-full bg-gradient-primary flex items-center justify-center">
-                      <span className="text-sm font-semibold text-white">
-                        {client.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-card-foreground truncate">
-                        {client.name}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {new Date(client.createdAt).toLocaleDateString('pt-BR')}
-                      </p>
-                    </div>
-                    {client.preferences && client.preferences.length > 0 && (
-                      <Badge variant="secondary" className="text-xs">
-                        {client.preferences.length} pref.
-                      </Badge>
-                    )}
-                  </div>
+                  <CustomerCard
+                    key={client.id}
+                    id={client.id}
+                    name={client.name}
+                    phone={client.phone}
+                    email={client.email}
+                    since={client.createdAt}
+                    preferencesCount={client.preferences?.length}
+                    className="w-full"
+                  />
                 ))}
               </div>
             ) : (
@@ -312,6 +369,21 @@ export function ClientDashboard({ clients }: ClientDashboardProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Customer List Drawer */}
+      <CustomerListDrawer
+        open={drawerState.open}
+        onOpenChange={(open) => setDrawerState(prev => ({ ...prev, open }))}
+        title={drawerState.title}
+        cohort={drawerState.cohort}
+        defaultRange={drawerState.defaultRange}
+      />
+
+      {/* Growth Drawer */}
+      <GrowthDrawer
+        open={growthDrawerOpen}
+        onOpenChange={setGrowthDrawerOpen}
+      />
     </div>
   );
 }

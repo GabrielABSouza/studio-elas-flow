@@ -2,9 +2,10 @@ import React, { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Clock } from 'lucide-react';
 import { useAgendaDay } from '../hooks';
-import { hhmmRange, indexAppointments, detectOverlaps, formatDisplayDate } from '../utils';
+import { hhmmRange, indexAppointments, formatDisplayDate } from '../utils';
 import { AppointmentPill, type ApptStatus } from './AppointmentPill';
-import { POSDrawer } from './POSDrawer';
+import { AppointmentActionsDialog } from './AppointmentActionsDialog';
+import { AddSlotButton } from './AddSlotButton';
 import { Appointment, AppointmentStatus } from '../types';
 
 // Mapeia nossos status para os do AppointmentPill
@@ -12,12 +13,12 @@ function mapStatus(status: AppointmentStatus): ApptStatus {
   switch (status) {
     case 'completed':
       return 'completed';
-    case 'in_service':
+    case 'confirmed':
       return 'confirmed';
-    case 'scheduled':
+    case 'to_confirm':
       return 'to_confirm';
-    case 'no_show':
     case 'canceled':
+      return 'canceled';
     default:
       return 'to_confirm';
   }
@@ -25,15 +26,18 @@ function mapStatus(status: AppointmentStatus): ApptStatus {
 
 interface DayGridProps {
   date: string;
+  showCanceled?: boolean;
+  onCreateAppointment?: (opts: { startISO?: string; professionalId?: string; lockedProfessionalId?: string }) => void;
+  onRescheduleAppointment?: (appointment: Appointment) => void;
 }
 
-export function DayGrid({ date }: DayGridProps) {
+export function DayGrid({ date, showCanceled = false, onCreateAppointment, onRescheduleAppointment }: DayGridProps) {
   const { professionals, appointments, isLoading } = useAgendaDay(date);
   const [active, setActive] = useState<Appointment | null>(null);
+  const [actionsOpen, setActionsOpen] = useState(false);
   
   const slots = useMemo(() => hhmmRange(8, 20, 30), []);
   const appointmentIndex = useMemo(() => indexAppointments(appointments, date), [appointments, date]);
-  const overlaps = useMemo(() => detectOverlaps(appointments), [appointments]);
 
   if (isLoading) {
     return (
@@ -84,25 +88,41 @@ export function DayGrid({ date }: DayGridProps) {
                   {slots.map(s => {
                     const slotAppointments = appointmentIndex.get(p.id)?.get(s) ?? [];
                     const appt = slotAppointments[0];
+                    const slotDateTime = `${date}T${s}:00-03:00`; // São Paulo timezone
                     
                     return (
                       <div key={`${p.id}_${s}`} className="border-t border-l p-1">
-                        {appt && (
-                          <AppointmentPill
-                            customerName={appt.customer.name}
-                            subtitle={appt.procedures?.[0]?.name}
-                            status={mapStatus(appt.status)}
-                            onOpen={() => setActive(appt)}
+                        {appt ? (
+                          <>
+                            <AppointmentPill
+                              customerName={appt.customer.name}
+                              subtitle={appt.procedures?.[0]?.name}
+                              status={mapStatus(appt.status)}
+                              showCanceled={showCanceled}
+                              onOpen={() => {
+                                setActive(appt);
+                                setActionsOpen(true);
+                              }}
+                            />
+                            
+                            {/* Badge para múltiplos agendamentos */}
+                            {slotAppointments.length > 1 && (
+                              <div className="mt-1">
+                                <Badge variant="secondary" className="text-xs">
+                                  +{slotAppointments.length - 1}
+                                </Badge>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <AddSlotButton
+                            onCreate={(opts) => onCreateAppointment?.({
+                              ...opts,
+                              lockedProfessionalId: p.id // Trava o profissional do slot
+                            })}
+                            startISO={slotDateTime}
+                            professionalId={p.id}
                           />
-                        )}
-                        
-                        {/* Badge para múltiplos agendamentos */}
-                        {slotAppointments.length > 1 && (
-                          <div className="mt-1">
-                            <Badge variant="secondary" className="text-xs">
-                              +{slotAppointments.length - 1}
-                            </Badge>
-                          </div>
                         )}
                       </div>
                     );
@@ -119,12 +139,18 @@ export function DayGrid({ date }: DayGridProps) {
       </div>
       
       {active && (
-        <POSDrawer
+        <AppointmentActionsDialog
           appointment={active}
-          isOpen={!!active}
-          onClose={() => setActive(null)}
+          professional={professionals.find(p => p.id === active.professionalId)}
+          open={actionsOpen}
+          onOpenChange={(open) => {
+            setActionsOpen(open);
+            if (!open) setActive(null);
+          }}
+          onReschedule={onRescheduleAppointment}
         />
       )}
+      
     </>
   );
 }
